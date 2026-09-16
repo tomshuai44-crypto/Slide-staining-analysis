@@ -1,3 +1,9 @@
+> **Current installation:** The default is now local H+DAB transitions, `local-hdab-1.0`, k=8. The H-only method below remains available as `tissuemodel=h_only`. See [current plugin guide and Java validation](H_DAB_Local_Transition_Plugin.md). Earlier installation/benchmark descriptions below are historical.
+
+> **2026-09-16 tissue-mask update:** The installed tissue selector is now `h-spatial-1.2`, with H-guided spatial support, area ROI handling, explicit selection status, and saved tissue masks/overlays. Read [the current mathematical dissection](H_DAB_Tissue_Mask_Correction.md). The historical method and benchmark text below predates this change; historical Python metrics are not validation of the installed Java tissue selector. The strict DAB-positive policy remains unchanged.
+
+> Current local build/install command: `python3 /Users/tom/Fiji/cloud_extract_eval/build_h_dab_tissue.py --install`. This includes the new selector dependency, tests, a dedicated menu entry, and backup before replacement; prefer it to the historical commands below.
+
 # H-DAB Dominance Extractor 工程文档
 
 ## 1. 项目概述
@@ -311,7 +317,9 @@ cd /Users/tom/Fiji
 JDK="$PWD/java/macos-arm64/zulu21.42.19-ca-jdk21.0.7-macosx_aarch64/zulu-21.jdk/Contents/Home"
 "$JDK/bin/javac" --release 8 -cp jars/ij-1.54p.jar \
   -d cloud_extract_eval/plugin_build/classes \
-  cloud_extract_eval/plugin_src/H_DAB_Dominance_Extractor.java
+  cloud_extract_eval/plugin_src/H_DAB_Dominance_Extractor.java \
+  cloud_extract_eval/plugin_src/H_DAB_Tissue_Selector.java \
+  cloud_extract_eval/plugin_src/H_DAB_Local_Tissue_Selector.java
 
 cp cloud_extract_eval/plugin_src/plugins.config cloud_extract_eval/plugin_build/classes/plugins.config
 
