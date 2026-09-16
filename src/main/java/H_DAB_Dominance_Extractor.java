@@ -30,12 +30,16 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
             return;
         }
 
-        Params params = Params.fromOptions(arg);
+        Params params;
+        try { params = Params.fromOptions(arg); }
+        catch (IllegalArgumentException e) { IJ.error("H-DAB Dominance Extractor", e.getMessage()); return; }
         if (!params.headless && !params.fromMacro && !showDialog(params)) {
             return;
         }
 
-        Result result = analyze(imp, params);
+        Result result;
+        try { result = analyze(imp, params); }
+        catch (IllegalArgumentException e) { IJ.error("H-DAB Dominance Extractor", e.getMessage()); return; }
         if (result == null) {
             IJ.error("H-DAB Dominance Extractor", "Could not analyze this image.");
             return;
@@ -50,8 +54,13 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
             result.residualImage.show();
             result.dominanceImage.show();
             result.maskImage.show();
+            result.tissueMaskImage.show();
+            result.tissueOverlayImage.show();
             result.measurements.show("H-DAB Dominance Results");
         }
+
+        IJ.log("H-DAB tissue selection: " + result.tissueSelection.status + "; reference: " + result.tissueSelection.referenceStatus
+                + ". Inspect the tissue mask before interpreting measurements.");
 
         if (params.outputDir.length() > 0) {
             try {
@@ -63,6 +72,11 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
     }
 
     public static Result analyze(ImagePlus imp, Params params) {
+        if (imp == null || imp.getType() != ImagePlus.COLOR_RGB) throw new IllegalArgumentException("An RGB image is required.");
+        if (!params.tissueModel.equals("local") && !params.tissueModel.equals("h_only"))
+            throw new IllegalArgumentException("tissuemodel must be local or h_only");
+        H_DAB_Tissue_Selector.Selection selection = params.tissueModel.equals("local")
+                ? H_DAB_Local_Tissue_Selector.select(imp, params) : H_DAB_Tissue_Selector.select(imp, params);
         int width = imp.getWidth();
         int height = imp.getHeight();
         int n = width * height;
@@ -71,7 +85,6 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
         double[] hema = new double[n];
         double[] dab = new double[n];
         double[] residual = new double[n];
-        double[] odNorm = new double[n];
 
         double[][] inv = inverse(stainMatrix());
         for (int i = 0; i < n; i++) {
@@ -82,7 +95,6 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
             double odR = -Math.log((r + 1.0) / 256.0);
             double odG = -Math.log((g + 1.0) / 256.0);
             double odB = -Math.log((b + 1.0) / 256.0);
-            odNorm[i] = Math.sqrt(odR * odR + odG * odG + odB * odB);
             double c0 = inv[0][0] * odR + inv[0][1] * odG + inv[0][2] * odB;
             double c1 = inv[1][0] * odR + inv[1][1] * odG + inv[1][2] * odB;
             double c2 = inv[2][0] * odR + inv[2][1] * odG + inv[2][2] * odB;
@@ -91,15 +103,8 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
             residual[i] = Math.max(0.0, c2);
         }
 
-        boolean[] tissue = new boolean[n];
-        int tissueCount = 0;
-        for (int i = 0; i < n; i++) {
-            tissue[i] = odNorm[i] >= params.tissueMinOD;
-            if (tissue[i]) tissueCount++;
-        }
-        if (tissueCount < 10) {
-            return null;
-        }
+        boolean[] tissue = selection.mask;
+        int tissueCount = selection.tissuePixels;
 
         double hScale = Math.max(percentile(hema, tissue, 99.0), 1e-9);
         double dScale = Math.max(percentile(dab, tissue, 99.0), 1e-9);
@@ -109,7 +114,7 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
         double[] dNorm = normalizeByScale(dab, dScale);
         double[] rNorm = normalizeByScale(residual, rScale);
 
-        ChosenThresholds chosen = params.autoOptimize
+        ChosenThresholds chosen = params.autoOptimize && tissueCount >= 10
                 ? optimizeThresholds(tissue, hNorm, dNorm, rNorm, params)
                 : new ChosenThresholds(params.alpha, params.dabMin, params.dominanceMin, params.residualMax, params.ratioMin, 0.0);
 
@@ -120,7 +125,7 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
         double sumHema = 0.0;
         double sumResidual = 0.0;
         for (int i = 0; i < n; i++) {
-            dominance[i] = dNorm[i] - chosen.alpha * hNorm[i];
+            dominance[i] = tissueCount > 0 ? dNorm[i] - chosen.alpha * hNorm[i] : 0.0;
             boolean positive = tissue[i]
                     && dNorm[i] >= chosen.dabMin
                     && dominance[i] >= chosen.dominanceMin
@@ -144,6 +149,17 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
         ImagePlus residualImage = new ImagePlus(base + " - Residual concentration", floatProcessor(width, height, residual));
         ImagePlus dominanceImage = new ImagePlus(base + " - DAB dominance score", floatProcessor(width, height, dominance));
         ImagePlus maskImage = new ImagePlus(base + " - DAB positive mask", new ByteProcessor(width, height, mask));
+        byte[] tissueBytes = new byte[n];
+        int[] overlay = pixels.clone();
+        for (int i = 0; i < n; i++) if (tissue[i]) {
+            tissueBytes[i] = (byte)255;
+            int c = pixels[i];
+            int r = (int)(.65*((c>>16)&255)), g = (int)(.65*((c>>8)&255)+.35*255), b = (int)(.65*(c&255));
+            overlay[i] = (r<<16)|(g<<8)|b;
+        }
+        ImagePlus tissueMaskImage = new ImagePlus(base + " - Tissue mask", new ByteProcessor(width, height, tissueBytes));
+        ImagePlus tissueOverlayImage = new ImagePlus(base + " - Tissue overlay (green = selected)", new ColorProcessor(width, height, overlay));
+        ImagePlus tissueSeedImage = new ImagePlus(base + " - Supported H evidence", new ByteProcessor(width, height, selection.seeds));
 
         ResultsTable rt = new ResultsTable();
         rt.incrementCounter();
@@ -152,29 +168,83 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
         rt.addValue("height", height);
         rt.addValue("tissue_pixels", tissueCount);
         rt.addValue("dab_positive_pixels", positiveCount);
-        rt.addValue("dab_area_fraction", positiveCount / (double) tissueCount);
-        rt.addValue("mean_dab_concentration", positiveCount > 0 ? sumDab / positiveCount : 0.0);
-        rt.addValue("integrated_dab_concentration", sumDab);
-        rt.addValue("mean_hema_in_positive", positiveCount > 0 ? sumHema / positiveCount : 0.0);
-        rt.addValue("mean_residual_in_positive", positiveCount > 0 ? sumResidual / positiveCount : 0.0);
+        rt.addValue("dab_area_fraction", tissueCount > 0 ? positiveCount / (double) tissueCount : Double.NaN);
+        rt.addValue("mean_dab_concentration", tissueCount == 0 ? Double.NaN : positiveCount > 0 ? sumDab / positiveCount : 0.0);
+        rt.addValue("integrated_dab_concentration", tissueCount == 0 ? Double.NaN : sumDab);
+        rt.addValue("mean_hema_in_positive", tissueCount == 0 ? Double.NaN : positiveCount > 0 ? sumHema / positiveCount : 0.0);
+        rt.addValue("mean_residual_in_positive", tissueCount == 0 ? Double.NaN : positiveCount > 0 ? sumResidual / positiveCount : 0.0);
         rt.addValue("alpha", chosen.alpha);
         rt.addValue("dab_min_normalized", chosen.dabMin);
         rt.addValue("dominance_min", chosen.dominanceMin);
         rt.addValue("residual_max_normalized", chosen.residualMax);
         rt.addValue("dab_to_hema_ratio_min", chosen.ratioMin);
         rt.addValue("optimization_score", chosen.score);
-        rt.addValue("hema_scale_p99", hScale);
-        rt.addValue("dab_scale_p99", dScale);
-        rt.addValue("residual_scale_p99", rScale);
+        rt.addValue("hema_scale_p99", tissueCount > 0 ? hScale : Double.NaN);
+        rt.addValue("dab_scale_p99", tissueCount > 0 ? dScale : Double.NaN);
+        rt.addValue("residual_scale_p99", tissueCount > 0 ? rScale : Double.NaN);
+        rt.addValue("tissue_algorithm", selection.algorithm);
+        rt.addValue("tissue_model", params.tissueModel);
+        rt.addValue("tissue_status", selection.status);
+        rt.addValue("tissue_reference_status", selection.referenceStatus);
+        rt.addValue("analysis_scope", imp.getRoi() == null ? "CURRENT_PLANE_FULL_FRAME" : "CURRENT_PLANE_AREA_ROI");
+        rt.addValue("current_slice", imp.getCurrentSlice());
+        rt.addValue("image_pixel_width", imp.getCalibration().pixelWidth);
+        rt.addValue("image_pixel_height", imp.getCalibration().pixelHeight);
+        rt.addValue("image_pixel_unit", imp.getCalibration().getUnit());
+        rt.addValue("roi_pixels", selection.domainPixels);
+        rt.addValue("tissue_min_corrected_od", params.tissueMinOD);
+        rt.addValue("tissue_h_min", params.tissueHMin);
+        rt.addValue("tissue_h_threshold", selection.hThreshold);
+        rt.addValue("tissue_background_h_sigma", selection.backgroundHSigma);
+        rt.addValue("tissue_sampling_block_px", params.tissueBlockSize);
+        rt.addValue("tissue_reach_px", params.tissueModel.equals("local") ? Double.NaN : params.tissueReachPixels);
+        rt.addValue("tissue_distance_metric", params.tissueModel.equals("local") ? "UNBOUNDED_8_CONNECTED" : "CHAMFER_3_4");
+        rt.addValue("tissue_support_radius_px", params.tissueSupportRadius);
+        rt.addValue("tissue_support_window_px", 2*params.tissueSupportRadius+1);
+        rt.addValue("tissue_close_radius_px", params.tissueCloseRadius);
+        rt.addValue("tissue_min_seed_pixels", params.tissueMinSeedPixels);
+        rt.addValue("tissue_seed_fraction", params.tissueSeedFraction);
+        rt.addValue("tissue_visible_fraction", params.tissueVisibleFraction);
+        rt.addValue("tissue_dark_max", params.tissueDarkMax);
+        rt.addValue("tissue_random_seed", Long.toString(params.tissueSeed));
+        rt.addValue("tissue_sampled_blocks", selection.sampledBlocks);
+        rt.addValue("tissue_samples_per_block", 32);
+        rt.addValue("tissue_sampling_strata_max_per_axis", 64);
+        rt.addValue("tissue_seed_blocks", selection.seedBlocks);
+        rt.addValue("tissue_supported_h_pixels", selection.seedPixels);
+        rt.addValue("tissue_auto_white", params.tissueAutoWhite ? 1 : 0);
+        rt.addValue("tissue_white_r", selection.whiteR);
+        rt.addValue("tissue_white_g", selection.whiteG);
+        rt.addValue("tissue_white_b", selection.whiteB);
+        rt.addValue("dab_auto_optimize", params.autoOptimize ? 1 : 0);
+        rt.addValue("concentration_reference", "LEGACY_255_UNCORRECTED");
+        rt.addValue("tissue_diagnostic_basis", params.tissueModel.equals("local") ? "CORRECTED_H_DAB_NEUTRAL" : "CHROMATIC_H");
+        rt.addValue("tissue_background_sampler", params.tissueModel.equals("local") ? "JAVA_RANDOM_PARTIAL_SHUFFLE" : "JAVA_RANDOM_BLOCKS");
+        for (java.util.Map.Entry<String, Double> entry : selection.diagnostics.entrySet())
+            rt.addValue("tissue_local_" + entry.getKey(), entry.getValue());
+        rt.setPrecision(9);
 
         return new Result(hemaColorImage, dabColorImage, residualColorImage,
-                hemaImage, dabImage, residualImage, dominanceImage, maskImage, rt, chosen);
+                hemaImage, dabImage, residualImage, dominanceImage, maskImage, tissueMaskImage, tissueOverlayImage,
+                tissueSeedImage, selection, rt, chosen);
     }
 
     private static boolean showDialog(Params params) {
         GenericDialog gd = new GenericDialog("H-DAB Dominance Extractor");
         gd.addNumericField("Alpha: DAB - alpha * Hematoxylin", params.alpha, 2);
-        gd.addNumericField("Tissue minimum OD", params.tissueMinOD, 3);
+        gd.addChoice("Tissue model", new String[]{"Local H+DAB transitions", "Previous H-only bounded growth"},
+                params.tissueModel.equals("local") ? "Local H+DAB transitions" : "Previous H-only bounded growth");
+        gd.addNumericField("Local tissue threshold k", params.tissueLocalK, 2);
+        gd.addNumericField("Local material minimum OD", params.tissueLocalMinOD, 3);
+        gd.addNumericField("H seed minimum corrected OD", params.tissueMinOD, 3);
+        gd.addNumericField("Tissue H seed minimum", params.tissueHMin, 3);
+        gd.addNumericField("Tissue support radius (pixels)", params.tissueSupportRadius, 0);
+        gd.addNumericField("Previous H-only reach (pixels)", params.tissueReachPixels, 0);
+        gd.addNumericField("Tissue gap closing radius (pixels)", params.tissueCloseRadius, 0);
+        gd.addCheckbox("Estimate tissue white reference", params.tissueAutoWhite);
+        gd.addNumericField("Manual tissue reference R", params.tissueWhiteR, 1);
+        gd.addNumericField("Manual tissue reference G", params.tissueWhiteG, 1);
+        gd.addNumericField("Manual tissue reference B", params.tissueWhiteB, 1);
         gd.addNumericField("DAB minimum, normalized", params.dabMin, 3);
         gd.addNumericField("Dominance minimum", params.dominanceMin, 3);
         gd.addNumericField("DAB/Hematoxylin ratio minimum", params.ratioMin, 2);
@@ -186,7 +256,18 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
         gd.showDialog();
         if (gd.wasCanceled()) return false;
         params.alpha = gd.getNextNumber();
+        params.tissueModel = gd.getNextChoiceIndex() == 0 ? "local" : "h_only";
+        params.tissueLocalK = gd.getNextNumber();
+        params.tissueLocalMinOD = gd.getNextNumber();
         params.tissueMinOD = gd.getNextNumber();
+        params.tissueHMin = gd.getNextNumber();
+        params.tissueSupportRadius = (int)gd.getNextNumber();
+        params.tissueReachPixels = (int)gd.getNextNumber();
+        params.tissueCloseRadius = (int)gd.getNextNumber();
+        params.tissueAutoWhite = gd.getNextBoolean();
+        params.tissueWhiteR = gd.getNextNumber();
+        params.tissueWhiteG = gd.getNextNumber();
+        params.tissueWhiteB = gd.getNextNumber();
         params.dabMin = gd.getNextNumber();
         params.dominanceMin = gd.getNextNumber();
         params.ratioMin = gd.getNextNumber();
@@ -195,6 +276,7 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
         params.showOutputs = gd.getNextBoolean();
         params.outputDir = gd.getNextString();
         params.prefix = gd.getNextString();
+        if (gd.invalidNumber()) { IJ.error("Invalid numeric parameter."); return false; }
         return true;
     }
 
@@ -424,7 +506,22 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
 
     public static class Params {
         public double alpha = 0.70;
+        public String tissueModel = "local";
+        public double tissueLocalK = 8.0;
+        public double tissueLocalMinOD = 0.02;
         public double tissueMinOD = 0.08;
+        public double tissueHMin = 0.08;
+        public int tissueBlockSize = 16;
+        public int tissueReachPixels = 96;
+        public int tissueSupportRadius = 8;
+        public int tissueCloseRadius = 2;
+        public int tissueMinSeedPixels = 4;
+        public double tissueSeedFraction = 0.02;
+        public double tissueVisibleFraction = 0.20;
+        public int tissueDarkMax = 10;
+        public long tissueSeed = 20260916L;
+        public boolean tissueAutoWhite = true;
+        public double tissueWhiteR = 255, tissueWhiteG = 255, tissueWhiteB = 255;
         public double dabMin = 0.10;
         public double dominanceMin = 0.00;
         public double ratioMin = 1.15;
@@ -443,7 +540,25 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
             if (opts == null) opts = "";
             p.fromMacro = opts.length() > 0;
             p.alpha = getDouble(opts, "alpha", p.alpha);
+            p.tissueModel = Macro.getValue(opts, "tissuemodel", p.tissueModel).toLowerCase(java.util.Locale.ROOT);
+            p.tissueLocalK = getDouble(opts, "tissueLocalK", p.tissueLocalK);
+            p.tissueLocalMinOD = getDouble(opts, "tissueLocalMinOD", p.tissueLocalMinOD);
             p.tissueMinOD = getDouble(opts, "tissue", getDouble(opts, "tissueMinOD", p.tissueMinOD));
+            p.tissueHMin = getDouble(opts, "tissueHMin", p.tissueHMin);
+            p.tissueBlockSize = getInteger(opts, "tissueBlockSize", p.tissueBlockSize);
+            p.tissueReachPixels = getInteger(opts, "tissueReachPixels", p.tissueReachPixels);
+            p.tissueSupportRadius = getInteger(opts, "tissueSupportRadius", p.tissueSupportRadius);
+            p.tissueCloseRadius = getInteger(opts, "tissueCloseRadius", p.tissueCloseRadius);
+            p.tissueMinSeedPixels = getInteger(opts, "tissueMinSeedPixels", p.tissueMinSeedPixels);
+            p.tissueSeedFraction = getDouble(opts, "tissueSeedFraction", p.tissueSeedFraction);
+            p.tissueVisibleFraction = getDouble(opts, "tissueVisibleFraction", p.tissueVisibleFraction);
+            p.tissueDarkMax = getInteger(opts, "tissueDarkMax", p.tissueDarkMax);
+            String seed = Macro.getValue(opts, "tissueSeed", Long.toString(p.tissueSeed));
+            try { p.tissueSeed = Long.parseLong(seed); } catch (NumberFormatException e) { throw new IllegalArgumentException("tissueSeed must be a 64-bit integer"); }
+            p.tissueAutoWhite = getBoolean(opts, "tissueAutoWhite", p.tissueAutoWhite);
+            p.tissueWhiteR = getDouble(opts, "tissueWhiteR", p.tissueWhiteR);
+            p.tissueWhiteG = getDouble(opts, "tissueWhiteG", p.tissueWhiteG);
+            p.tissueWhiteB = getDouble(opts, "tissueWhiteB", p.tissueWhiteB);
             p.dabMin = getDouble(opts, "dab", getDouble(opts, "dabMin", p.dabMin));
             p.dominanceMin = getDouble(opts, "dominance", getDouble(opts, "dominanceMin", p.dominanceMin));
             p.ratioMin = getDouble(opts, "ratio", getDouble(opts, "ratioMin", p.ratioMin));
@@ -462,8 +577,16 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
             try {
                 return Double.parseDouble(raw);
             } catch (NumberFormatException e) {
+                if (key.startsWith("tissue")) throw new IllegalArgumentException(key + " must be numeric");
                 return fallback;
             }
+        }
+
+        private static int getInteger(String opts, String key, int fallback) {
+            double value = getDouble(opts, key, fallback);
+            if (!Double.isFinite(value) || value != Math.rint(value) || value > Integer.MAX_VALUE || value < Integer.MIN_VALUE)
+                throw new IllegalArgumentException(key + " must be a finite integer");
+            return (int)value;
         }
 
         private static boolean getBoolean(String opts, String key, boolean fallback) {
@@ -500,12 +623,15 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
         public final ImagePlus residualImage;
         public final ImagePlus dominanceImage;
         public final ImagePlus maskImage;
+        public final ImagePlus tissueMaskImage, tissueOverlayImage, tissueSeedImage;
+        public final H_DAB_Tissue_Selector.Selection tissueSelection;
         public final ResultsTable measurements;
         public final ChosenThresholds thresholds;
 
         public Result(ImagePlus hemaColorImage, ImagePlus dabColorImage, ImagePlus residualColorImage,
                       ImagePlus hemaImage, ImagePlus dabImage, ImagePlus residualImage,
-                      ImagePlus dominanceImage, ImagePlus maskImage, ResultsTable measurements,
+                      ImagePlus dominanceImage, ImagePlus maskImage, ImagePlus tissueMaskImage, ImagePlus tissueOverlayImage,
+                      ImagePlus tissueSeedImage, H_DAB_Tissue_Selector.Selection tissueSelection, ResultsTable measurements,
                       ChosenThresholds thresholds) {
             this.hemaColorImage = hemaColorImage;
             this.dabColorImage = dabColorImage;
@@ -515,6 +641,10 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
             this.residualImage = residualImage;
             this.dominanceImage = dominanceImage;
             this.maskImage = maskImage;
+            this.tissueMaskImage = tissueMaskImage;
+            this.tissueOverlayImage = tissueOverlayImage;
+            this.tissueSeedImage = tissueSeedImage;
+            this.tissueSelection = tissueSelection;
             this.measurements = measurements;
             this.thresholds = thresholds;
         }
@@ -532,6 +662,9 @@ public class H_DAB_Dominance_Extractor implements PlugIn {
             saveTiff(residualImage, new File(dir, prefix + "_residual.tif"));
             saveTiff(dominanceImage, new File(dir, prefix + "_dab_dominance.tif"));
             saveTiff(maskImage, new File(dir, prefix + "_dab_positive_mask.tif"));
+            saveTiff(tissueMaskImage, new File(dir, prefix + "_tissue_mask.tif"));
+            saveTiff(tissueOverlayImage, new File(dir, prefix + "_tissue_overlay.tif"));
+            saveTiff(tissueSeedImage, new File(dir, prefix + "_tissue_h_evidence.tif"));
             measurements.save(new File(dir, prefix + "_measurements.csv").getAbsolutePath());
         }
 
