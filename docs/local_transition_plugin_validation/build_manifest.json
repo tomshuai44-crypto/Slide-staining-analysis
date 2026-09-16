@@ -1,0 +1,13 @@
+{
+  "built_utc": "2026-09-16T19:09:42.771630+00:00",
+  "jar_sha256": "4f29d4ba496631cbe0d2e7df2611f5c85318dfe43622ef59ed9c7fd54441da4b",
+  "sources": {
+    "cloud_extract_eval/plugin_src/H_DAB_Dominance_Extractor.java": "b5e1f14344fe3cbb827eb88bc89773999f2031f4ab564956b4af30bbd4d7bde1",
+    "cloud_extract_eval/plugin_src/H_DAB_Tissue_Selector.java": "e381f12f95956f06ee62e64f5716152ca334eacdf9b8d130c50d11ad1049ade2",
+    "cloud_extract_eval/plugin_src/H_DAB_Local_Tissue_Selector.java": "293538159c54f4ca19afb3c5c615dd8a1854b99331d21fd4d17653a7e66ff2a0"
+  },
+  "installed": true,
+  "backup": "/Users/tom/Fiji/cloud_extract_eval/local_transition_plugin_validation/backup/H_DAB_Dominance_Extractor.20260916T190942771979Z.jar",
+  "backup_sha256": "23a6ad262e451d4b403b04b2f4f22bb452f15bb5a18d4ce9f24d93fae875e3e1",
+  "installed_sha256": "4f29d4ba496631cbe0d2e7df2611f5c85318dfe43622ef59ed9c7fd54441da4b"
+}

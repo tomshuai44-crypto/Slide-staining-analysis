@@ -1,0 +1,4 @@
+image,previous_tissue_pixels,local_tissue_pixels,previous_dab_fraction,local_dab_fraction,local_dab_positive_pixels,raw_channel_hashes_match,status
+NT,4500255,4465082,0.079858141,0.080538499,359611,True,REVIEW_REQUIRED
+CB1,2885412,2632655,0.092016669,0.095853046,252348,True,REVIEW_REQUIRED
+HFL,1731101,1769431,0.091339558,0.090902669,160846,True,REVIEW_REQUIRED

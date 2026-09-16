@@ -1,0 +1,84 @@
+PASS background-only ffffff
+PASS background-only f0f0f0
+PASS background-only 808080
+PASS background-only cebfc2
+PASS background-only 0
+PASS DAB alone never supplies tissue denominator
+PASS neutral darkness rejected even with fixed white reference
+PASS pure DAB rejected even with fixed white reference
+PASS known reference permits an entirely H-stained frame
+PASS uniform full-frame stain without a reference is not guessed
+PASS isolated H pixels rejected
+PASS neutral RGB channel noise rejected
+PASS weak H explicitly fails
+PASS fixed-seed exact reproducibility
+PASS tissue touching image edge retained
+PASS disconnected peripheral tissue retained
+PASS empty center does not seed tissue
+PASS large internal lumen remains empty
+PASS pale inter-nuclear tissue included
+PASS mask covers tissue beyond H nuclei
+PASS synthetic pale-tissue geometry IoU >= 0.95
+PHANTOM_IOU=1.0 TISSUE=18304 H_SUPPORT=1750
+PASS all 16 sampling-grid offsets give identical aligned phantom masks
+PASS representative phantom robust to sampling seed
+PASS nonrectangular area ROI clips mask
+PASS background-only ROI does not borrow external nuclei
+PASS empty denominator exports NaN with status
+PASS saved mask equals measurement denominator; DAB is subset
+PASS DAB regression fixture exercises both positive and negative decisions
+PASS unchanged strict DAB predicate applied inside new tissue mask
+PASS raw DAB integral agrees with selected positives
+PASS DAB fraction uses selected tissue
+PASS zero tissue threshold rejected
+PASS malformed option rejected: tissuereachpixels=NaN
+PASS malformed option rejected: tissuesupportradius=2.5
+PASS malformed option rejected: tissuehmin=abc
+PASS macro parameter parsing
+ALL 36 CHECKS PASSED
+PASS LOCAL default model and reviewed k=8
+PASS LOCAL k=2.0 analytic H/D extension shape IoU=1.0
+PASS LOCAL k=2.0 DAB-only extension >250 pixels beyond H retained
+PASS LOCAL k=2.0 DAB-negative H tissue retained
+PASS LOCAL k=2.0 clear lumen preserved
+PASS LOCAL k=3.0 analytic H/D extension shape IoU=1.0
+PASS LOCAL k=3.0 DAB-only extension >250 pixels beyond H retained
+PASS LOCAL k=3.0 DAB-negative H tissue retained
+PASS LOCAL k=3.0 clear lumen preserved
+PASS LOCAL nested masks as k increases
+PASS LOCAL k=4.0 analytic H/D extension shape IoU=1.0
+PASS LOCAL k=4.0 DAB-only extension >250 pixels beyond H retained
+PASS LOCAL k=4.0 DAB-negative H tissue retained
+PASS LOCAL k=4.0 clear lumen preserved
+PASS LOCAL nested masks as k increases
+PASS LOCAL k=5.0 analytic H/D extension shape IoU=1.0
+PASS LOCAL k=5.0 DAB-only extension >250 pixels beyond H retained
+PASS LOCAL k=5.0 DAB-negative H tissue retained
+PASS LOCAL k=5.0 clear lumen preserved
+PASS LOCAL nested masks as k increases
+PASS LOCAL k=8.0 analytic H/D extension shape IoU=1.0
+PASS LOCAL k=8.0 DAB-only extension >250 pixels beyond H retained
+PASS LOCAL k=8.0 DAB-negative H tissue retained
+PASS LOCAL k=8.0 clear lumen preserved
+PASS LOCAL nested masks as k increases
+PASS LOCAL fixed-seed reproducibility including local statistics
+PASS LOCAL previous H-only reach does not constrain local model
+PASS LOCAL blank/no-H color ffffff does not force a mask
+PASS LOCAL blank/no-H color 808080 does not force a mask
+PASS LOCAL blank/no-H color cdc3c6 does not force a mask
+PASS LOCAL blank/no-H color 0 does not force a mask
+PASS LOCAL DAB alone without reliable H cannot seed tissue
+PASS LOCAL isolated unseeded DAB island excluded
+PASS LOCAL known limitation: seeded H-coloured artifact remains
+PASS LOCAL H patch does not flood independent neutral RGB noise
+PASS LOCAL nonrectangular area ROI clips local mask
+PASS LOCAL pixels outside ROI cannot alter local mask or background thresholds
+PASS LOCAL ROI cannot borrow an H seed outside its domain
+PASS LOCAL insufficient local background explicitly fails with NaN denominator
+PASS LOCAL raw measurement H/D/residual maps unchanged across tissue models
+PASS LOCAL saved tissue mask equals denominator and contains all DAB positives
+PASS LOCAL local tissue area is used by measurement fraction
+PASS LOCAL CSV identifies local model, threshold and absence of reach cap
+PASS LOCAL local macro options parsed
+PASS LOCAL invalid local threshold rejected
+ALL 45 LOCAL CHECKS PASSED

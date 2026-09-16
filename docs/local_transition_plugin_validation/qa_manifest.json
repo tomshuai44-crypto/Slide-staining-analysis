@@ -1,0 +1,30 @@
+{
+  "installed_jar_sha256": "4f29d4ba496631cbe0d2e7df2611f5c85318dfe43622ef59ed9c7fd54441da4b",
+  "input_sha256": {
+    "NT": "c79b3ed3a1b1ce9dc4e9c4fee9d96218df44eabdf69e1f7686df26a49327673c",
+    "CB1": "3d5beda86ff9931011344839e8b461a566ed6262e7e5702e7c534e5fbf9ae580",
+    "HFL": "560886ce527470564f4a0ff324a45c0cc69d22fd204e6f07f9821e0a41136a34"
+  },
+  "nt_python_java_iou": 0.9999749171032658,
+  "nt_python_java_disagreement_pixels": 112,
+  "nt_seed_masks_identical": true,
+  "previous_mode_exact_mask_match": true,
+  "checks": "All saved mask counts equal CSV; DAB masks subset tissue; seeds retained; raw H/D/residual hashes match prior plugin.",
+  "outputs": {
+    "NT/NT_dab_positive_mask.tif": "3a2c02915631f1373a3b3cbd14b74eae478b9fb95eb6a63190a41507631e7961",
+    "NT/NT_measurements.csv": "9826dbdb31eab86263c28e0afe49fdf617877eb7a7800e8ee98b913c10825c4b",
+    "NT/NT_tissue_h_evidence.tif": "a82111d6b85125e91f7dee6fa35f591c1186c76f44150def03a49a9c75c5ed92",
+    "NT/NT_tissue_mask.tif": "9dc198dab66057d16cf42558868f4055fc2e1907318ed9243a6527eb3bca74b3",
+    "NT/NT_tissue_overlay.tif": "18a25f356f25154a7a196a73d20cd3cd9ad70db419001cc959b9fac066d9613d",
+    "CB1/CB1_dab_positive_mask.tif": "e1501d984806bbba10b852ff7d260c39b9b23799fbf77e77711d1453c6b13e22",
+    "CB1/CB1_measurements.csv": "0399bff50e97b715219ee8033e47208c4f0316a79f64a8e92e157075a0b0f6f0",
+    "CB1/CB1_tissue_h_evidence.tif": "beb577e3e2364a4462da9593c51efa52893ded2c43b3d16afff76e68c3727837",
+    "CB1/CB1_tissue_mask.tif": "b37b318d55975f3ceec86e8f7f6ee6f6773b69e824ffa523316624db69bafd38",
+    "CB1/CB1_tissue_overlay.tif": "20142e49f8aa125cc2fb6a7a8b1966ffaf638208b6d0ef56f1431244656e844a",
+    "HFL/HFL_dab_positive_mask.tif": "d136a4a13b3115af39aa3b69a0c589e092e1d371f7922fabe3f9b4775a972ede",
+    "HFL/HFL_measurements.csv": "7d5869725e024878a863928f931c97e59d2ec63f5ffc389a2aa28ce26f0d5f86",
+    "HFL/HFL_tissue_h_evidence.tif": "b9a1e0e1e8d831c921fc424a982f9a343c033ddc8e845d86c287e94aaa2129cd",
+    "HFL/HFL_tissue_mask.tif": "e1b204ea1a39d3f0ae323a60eb719f034005fd0d2bcdf8d1e65e495f85a2310e",
+    "HFL/HFL_tissue_overlay.tif": "56aa2549c6b3b8cf922ea12175c77e9ccf17bcfe966d273d7ae280138d505dd6"
+  }
+}
