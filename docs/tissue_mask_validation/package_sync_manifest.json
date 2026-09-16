@@ -1,0 +1,12 @@
+[
+  {
+    "package": "/Users/tom/Fiji/cloud_extract_eval/github_stain_analysis_package",
+    "source_sha256": "452fa9fb0de28cc0a1d5031e1c25a06c03a5a8809fa21ae384ccb29cee3fc11d",
+    "jar_sha256": "23a6ad262e451d4b403b04b2f4f22bb452f15bb5a18d4ce9f24d93fae875e3e1"
+  },
+  {
+    "package": "/Users/tom/Fiji/cloud_extract_eval/github_push_worktree_slide_staining",
+    "source_sha256": "452fa9fb0de28cc0a1d5031e1c25a06c03a5a8809fa21ae384ccb29cee3fc11d",
+    "jar_sha256": "23a6ad262e451d4b403b04b2f4f22bb452f15bb5a18d4ce9f24d93fae875e3e1"
+  }
+]

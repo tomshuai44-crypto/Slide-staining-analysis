@@ -1,0 +1,38 @@
+PASS background-only ffffff
+PASS background-only f0f0f0
+PASS background-only 808080
+PASS background-only cebfc2
+PASS background-only 0
+PASS DAB alone never supplies tissue denominator
+PASS neutral darkness rejected even with fixed white reference
+PASS pure DAB rejected even with fixed white reference
+PASS known reference permits an entirely H-stained frame
+PASS uniform full-frame stain without a reference is not guessed
+PASS isolated H pixels rejected
+PASS neutral RGB channel noise rejected
+PASS weak H explicitly fails
+PASS fixed-seed exact reproducibility
+PASS tissue touching image edge retained
+PASS disconnected peripheral tissue retained
+PASS empty center does not seed tissue
+PASS large internal lumen remains empty
+PASS pale inter-nuclear tissue included
+PASS mask covers tissue beyond H nuclei
+PASS synthetic pale-tissue geometry IoU >= 0.95
+PHANTOM_IOU=1.0 TISSUE=18304 H_SUPPORT=1750
+PASS all 16 sampling-grid offsets give identical aligned phantom masks
+PASS representative phantom robust to sampling seed
+PASS nonrectangular area ROI clips mask
+PASS background-only ROI does not borrow external nuclei
+PASS empty denominator exports NaN with status
+PASS saved mask equals measurement denominator; DAB is subset
+PASS DAB regression fixture exercises both positive and negative decisions
+PASS unchanged strict DAB predicate applied inside new tissue mask
+PASS raw DAB integral agrees with selected positives
+PASS DAB fraction uses selected tissue
+PASS zero tissue threshold rejected
+PASS malformed option rejected: tissuereachpixels=NaN
+PASS malformed option rejected: tissuesupportradius=2.5
+PASS malformed option rejected: tissuehmin=abc
+PASS macro parameter parsing
+ALL 36 CHECKS PASSED

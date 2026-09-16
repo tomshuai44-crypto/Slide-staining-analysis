@@ -1,0 +1,9 @@
+UNCHANGED optimizeThresholds
+UNCHANGED scoreThresholds
+UNCHANGED percentile
+UNCHANGED otsuThreshold
+UNCHANGED normalizeByScale
+UNCHANGED stainMatrix
+UNCHANGED residualVector
+UNCHANGED inverse
+UNCHANGED normalize
